@@ -1,0 +1,23 @@
+# Instantiate class NSGA2() and class ZDT3()
+optimizer = NSGA2(pop_size=100, n_var=30, lower_bound=0.0, upper_bound=1.0,
+                  crossover_probability=0.9, mutation_probability=0.1,
+                  crossover_distribution_index=20, mutation_distribution_index=20,
+                  max_generations=500, tournament_size=2)
+problem = ZDT3()
+
+# Use NSGA-II to solve the ZDT3 problem
+[optimum_x, optimum_fx] = optimizer.run(problem, max_gen=500)
+
+#-----------BEGIN-----------#
+# TODO: Plot the final population `optimum_fx` in the objective space
+import matplotlib.pyplot as plt
+
+f1 = optimum_fx[:, 0]
+f2 = optimum_fx[:, 1]
+
+plt.scatter(f1, f2, c='grey', marker='o')
+plt.xlabel('f1')
+plt.ylabel('f2')
+plt.title('NSGA-II Optimization Results for ZDT3')
+plt.show()
+#-----------END-----------#
