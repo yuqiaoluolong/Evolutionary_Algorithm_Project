@@ -88,7 +88,7 @@ class NSGA2():
         return population_fx
         #-----------END-----------#
     
-    def tournament_selection(self, population_fx):
+    def tournament_selection(self, population_x):
         #-----------BEGIN-----------#
         # TODO: Implement tournament selection on parent population to  
         # construct a mating pool of size `pop_size` for crossover
@@ -103,9 +103,9 @@ class NSGA2():
     
             # Determine the winner of the tournament
             if rank_a < rank_b or (rank_a == rank_b and crowd_dist_a > crowd_dist_b):
-                winner = population_fx[a]
+                winner = population_x[a]
             else:
-                winner = population_fx[b]
+                winner = population_x[b]
 
             print("Winner shape:", np.shape(winner))
             mating_pool.append(winner)
@@ -189,7 +189,7 @@ class NSGA2():
         combined_population = np.vstack([population_x, offspring_x])  # Use vstack instead of +
 
         # Assume fitness is already evaluated for combined_population
-        combined_fitness = self.prob.evaluate(combined_population)
+        combined_fitness = prob.evaluate(combined_population)
         
         # Initialize structures for non-dominated sorting
         fronts = [[]]
@@ -267,7 +267,7 @@ class NSGA2():
             self.fitness_assignment(population_fx)
             
             # ?? = self.tournament_selection(?)
-            self.mating_pool = self.tournament_selection(population_fx)
+            self.mating_pool = self.tournament_selection(population_x)
     
             # ??? = self.crossover(??)
             self.offspring_pool = self.crossover(self.crossover_probability)
