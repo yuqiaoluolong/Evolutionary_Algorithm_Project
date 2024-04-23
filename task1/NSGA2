@@ -107,7 +107,7 @@ class NSGA2():
             else:
                 winner = population_x[b]
 
-            print("Winner shape:", np.shape(winner))
+            # print("Winner shape:", np.shape(winner))
             mating_pool.append(winner)
     
         return mating_pool
@@ -124,13 +124,13 @@ class NSGA2():
             # Select parents for crossover
             parent1 = self.mating_pool[i]
             parent2 = self.mating_pool[i+1] if i+1 < self.pop_size else self.mating_pool[0]
-            print("Parent1 shape:", np.shape(parent1))
-            print("Parent2 shape:", np.shape(parent2))
+            # print("Parent1 shape:", np.shape(parent1))
+            # print("Parent2 shape:", np.shape(parent2))
             
             # Initialize children as exact copies of parents
             child1, child2 = parent1.copy(), parent2.copy()
-            print("Child1 initial shape:", np.shape(child1))
-            print("Child2 initial shape:", np.shape(child2))
+            # print("Child1 initial shape:", np.shape(child1))
+            # print("Child2 initial shape:", np.shape(child2))
 
             # Perform crossover with probability pc
             if random.random() <= pc:
@@ -142,8 +142,8 @@ class NSGA2():
                     beta = beta ** (1 / (self.crossover_distribution_index + 1))
                     child1[j] = 0.5 * ((1 + beta) * parent1[j] + (1 - beta) * parent2[j])
                     child2[j] = 0.5 * ((1 - beta) * parent1[j] + (1 + beta) * parent2[j])
-            print("Child1 shape:", np.shape(child1))
-            print("Child2 shape:", np.shape(child2))
+            # print("Child1 shape:", np.shape(child1))
+            # print("Child2 shape:", np.shape(child2))
             
             # Add children to the offspring pool
             offspring_pool.extend([child1, child2])
@@ -189,8 +189,8 @@ class NSGA2():
             population_x = np.array(population_x)
         if isinstance(offspring_x, list):
             offspring_x = np.array(offspring_x)
-        print("Population X Shape:", population_x.shape)
-        print("Offspring X Shape:", offspring_x.shape)
+        # print("Population X Shape:", population_x.shape)
+        # print("Offspring X Shape:", offspring_x.shape)
         combined_population = np.vstack([population_x, offspring_x])  # Use vstack instead of +
 
         # Assume fitness is already evaluated for combined_population
@@ -283,6 +283,7 @@ class NSGA2():
             
             # offspring_x = self.mutation(???)
             self.offspring_pool = self.mutation(self.mutation_probability)
+            
             # Convert offspring_pool to a NumPy array before evaluation if not already
             offspring_x = np.array(self.offspring_pool)
         
@@ -291,5 +292,8 @@ class NSGA2():
 
             # Apply enviromental selection to select solutions
             [population_x, population_fx]  = self.environmental_selection([population_x, offspring_x])
-       
+
+            # Print progress after each iteration
+            print(f"Iteration {i}/{max_gen}") 
+
         return population_x, population_fx
