@@ -2,7 +2,7 @@
 optimizer = NSGA2(pop_size=100, n_var=30, lower_bound=0.0, upper_bound=1.0,
                   crossover_probability=0.9, mutation_probability=0.1,
                   crossover_distribution_index=20, mutation_distribution_index=20,
-                  max_generations=500, tournament_size=2)
+                  tournament_size=2)
 problem = ZDT3()
 
 # Use NSGA-II to solve the ZDT3 problem
@@ -12,8 +12,16 @@ problem = ZDT3()
 # TODO: Plot the final population `optimum_fx` in the objective space
 import matplotlib.pyplot as plt
 
-f1 = optimum_fx[:, 0]
-f2 = optimum_fx[:, 1]
+print("Final fitness values (optimum_fx):", optimum_fx)
+
+optimum_fx_array = np.array(optimum_fx)
+
+f1 = optimum_fx_array[:, 0]
+f2 = optimum_fx_array[:, 1]
+
+# Print the ranges of f1 and f2 to see if they fall within a sensible range
+print("Range of f1:", f1.min(), "to", f1.max())
+print("Range of f2:", f2.min(), "to", f2.max())
 
 plt.scatter(f1, f2, c='grey', marker='o')
 plt.xlabel('f1')
