@@ -184,6 +184,11 @@ class NSGA2():
         population_x, offspring_x = combined_population_list
         
         # Combine the parent and offspring populations
+        # Convert lists to numpy arrays if necessary
+        if isinstance(population_x, list):
+            population_x = np.array(population_x)
+        if isinstance(offspring_x, list):
+            offspring_x = np.array(offspring_x)
         print("Population X Shape:", population_x.shape)
         print("Offspring X Shape:", offspring_x.shape)
         combined_population = np.vstack([population_x, offspring_x])  # Use vstack instead of +
@@ -198,33 +203,37 @@ class NSGA2():
         
         # Reset ranks and crowding distances for the new combined population
         self.ranks = [-1] * len(combined_population)
-        self.crowding_distances = [0] * len(combined_population)
+        self.crowding_distances = [0.0] * len(combined_population)
         
         # Non-dominated sorting
         for i in range(len(combined_population)):
             for j in range(len(combined_population)):
                 if i != j:
-                    if all(x <= y for x, y in zip(combined_fitness[i], combined_fitness[j])) and any(x < y for x, y in zip(combined_fitness[i], combined_fitness[j])):
+                    dominate_i = all(x <= y for x, y in zip(combined_fitness[i], combined_fitness[j]))
+                    dominate_j = all(y <= x for x, y in zip(combined_fitness[i], combined_fitness[j]))
+                    if dominate_i and not dominate_j:
                         dominated_individuals[i].add(j)
-                    elif all(y <= x for x, y in zip(combined_fitness[i], combined_fitness[j])) and any(y < x for x, y in zip(combined_fitness[i], combined_fitness[j])):
+                    elif dominate_j and not dominate_i:
                         domination_counts[i] += 1
     
             if domination_counts[i] == 0:
                 fronts[0].append(i)
                 self.ranks[i] = 0  # Assign rank 0 to non-dominated individuals
     
-        # Fill ranks for other individuals based on fronts
+        # Assign front numbers and manage further fronts
         front_number = 0
-        while fronts[front_number]:
-            for individual_index in fronts[front_number]:
-                for dominated_index in dominated_individuals[individual_index]:
-                    domination_counts[dominated_index] -= 1
-                    if domination_counts[dominated_index] == 0:
-                        fronts[front_number + 1].append(dominated_index)
-                        self.ranks[dominated_index] = front_number + 1
+        while front_number < len(fronts):
+            current_front = fronts[front_number]
+            next_front = []
+            for i in current_front:
+                for j in dominated_individuals[i]:
+                    domination_counts[j] -= 1
+                    if domination_counts[j] == 0:
+                        next_front.append(j)
+                        self.ranks[j] = front_number + 1
+            if next_front:
+                fronts.append(next_front)
             front_number += 1
-            if front_number == len(fronts):
-                fronts.append([])
     
         # Calculate crowding distances within each front
         for front in fronts:
