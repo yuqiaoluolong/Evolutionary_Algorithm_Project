@@ -3,7 +3,7 @@ class NSGA2():
     def __init__(self, pop_size=100, n_var=30, lower_bound=0.0, upper_bound=1.0,
              crossover_probability=0.9, mutation_probability=0.1,
              crossover_distribution_index=20, mutation_distribution_index=20,
-             max_generations=500, tournament_size=2):
+             tournament_size=2):
         self.pop_size = pop_size
         #-----------BEGIN-----------#
         # TODO: Include other parameters you may use to create an 
@@ -17,7 +17,6 @@ class NSGA2():
         self.mutation_probability = mutation_probability
         self.crossover_distribution_index = crossover_distribution_index
         self.mutation_distribution_index = mutation_distribution_index
-        self.max_generations = max_generations
         self.tournament_size = tournament_size
         self.mating_pool = []  # Initializes the mating pool
         self.offspring_pool = []
@@ -272,7 +271,7 @@ class NSGA2():
         #-----------END-----------#
     
         
-    def run(self, prob, max_gen=500):
+    def run(self, prob, max_gen):
         # Initialization
         population_x = self.initialize(prob)
         population_fx = prob.evaluate(population_x)
