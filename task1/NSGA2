@@ -28,6 +28,10 @@ class NSGA2():
     def initialize(self, prob):
         x = prob.lower + (prob.upper - prob.lower) * np.random.rand(
             self.pop_size, prob.n_var)
+        # print("x = ", x)
+
+        # f = prob.evaluate(x)
+        # print(f"f(x) = {f}")
         return x
     
     def fitness_assignment(self, population_fx):
@@ -148,8 +152,10 @@ class NSGA2():
             # Add children to the offspring pool
             offspring_pool.extend([child1, child2])
 
-        # Ensure the offspring pool size matches the population size
-        return offspring_pool[:self.pop_size]
+        # Clamp values to ensure they are within the specified bounds after crossover
+        for child in offspring_pool:
+            np.clip(child, self.lower_bound, self.upper_bound, out=child)
+        return offspring_pool
         #-----------END-----------#
         
     def mutation(self, pm):
@@ -170,6 +176,9 @@ class NSGA2():
                     # Clamping to bounds
                     individual[i] = max(self.lower_bound[i], min(self.upper_bound[i], individual[i]))
 
+        # Clamp values to ensure they are within the specified bounds after mutation
+        for individual in self.offspring_pool:
+            np.clip(individual, self.lower_bound, self.upper_bound, out=individual)
         return self.offspring_pool
         #-----------END-----------#
         
