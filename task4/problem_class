@@ -7,7 +7,7 @@ class RCM22():
         self.n_var = 9  # number of decision variables (x1 to x8)
         self.n_con = 6  # number of constraints (4 h constraints and 2 g constraints)
 
-        self.lower = np.array(self.n_var)
+        self.lower = np.zeros(self.n_var)
         self.upper = np.array([100, 200, 100, 100, 100, 100, 200, 100, 200])
 
     def evaluate(self, x):
@@ -15,6 +15,7 @@ class RCM22():
         f = np.zeros((pop_size, self.n_obj))
         h = np.zeros((pop_size, self.n_con-2))  # h constraints
         g = np.zeros((pop_size, self.n_con-4))  # g constraints
+        tolerance = 100
 
         # Objective functions
         f[:, 0] = -9 * x[:, 0] - 15 * x[:, 1] + 6 * x[:, 2] + 16 * x[:, 3]
@@ -25,7 +26,8 @@ class RCM22():
         h[:, 1] = x[:, 0] - x[:, 4] - x[:, 6]
         h[:, 2] = x[:, 1] - x[:, 5] - x[:, 7]
         h[:, 3] = x[:, 8] * x[:, 6] + x[:, 8] * x[:, 7] - 3 * x[:, 2] - x[:, 3]
-        h = np.abs(h)  # the degree of constraint violation of x at each equality constraint
+        h = np.abs(h) - tolerance  # the degree of constraint violation of x at each equality constraint
+        h = np.where(h > 0, h, 0)
 
         g[:, 0] = x[:, 8] * x[:, 6] + 2 * x[:, 4] - 2.5 * x[:, 0]
         g[:, 1] = x[:, 8] * x[:, 7] + 2 * x[:, 5] - 1.5 * x[:, 1]
