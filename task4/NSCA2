@@ -1,0 +1,389 @@
+# problem = MW7()
+class CNSGA2():
+    #-----------BEGIN-----------#
+    # TODO: Implement the parameter-less constraint handling technique in NSGA-II
+    #-----------END-----------#
+    def __init__(self, pop_size=100, n_var=9, crossover_probability=0.9, mutation_probability=0.1,
+             crossover_distribution_index=20, mutation_distribution_index=20,
+             tournament_size=2):
+        self.pop_size = pop_size
+        #-----------BEGIN-----------#
+        # TODO: Include other parameters you may use to create an 
+        #       instance of NSGA2(), such as crossover probability 
+        #       and mutation probability  
+        self.pop_size = pop_size
+        self.n_var = n_var
+        self.lower_bound = np.zeros(self.n_var) 
+        self.upper_bound = np.array([100, 200, 100, 100, 100, 100, 200, 100, 200])
+        self.crossover_probability = crossover_probability
+        self.mutation_probability = mutation_probability
+        self.crossover_distribution_index = crossover_distribution_index
+        self.mutation_distribution_index = mutation_distribution_index
+        self.tournament_size = tournament_size
+        self.mating_pool = []  # Initializes the mating pool
+        self.offspring_pool = []
+        self.ranks = []  # Initialize ranks as an empty list
+        self.crowding_distances = []  # Initialize crowding distances as an empty list
+        #-----------END-----------#
+        
+    def initialize(self, prob):
+        x = prob.lower + (prob.upper - prob.lower) * np.random.rand(
+            self.pop_size, prob.n_var)
+        print("x = ", x)
+
+        # f = prob.evaluate(x)
+        # print(f"f(x) = {f}")
+        return x
+    
+    def fitness_assignment(self, population_fx,constraints):
+        #-----------BEGIN-----------#
+        # TODO: Implement non-dominated sorting and crowding distance
+        # to assign non-domination rank and local crowding distance to each 
+        # solution in the parent population, which will be used later in
+        # tournament selection
+        pop_size = len(population_fx)
+        # Reset ranks and crowding distances for the new fitness assignment
+        self.ranks = [-1] * pop_size
+        self.crowding_distances = [0.0] * pop_size
+        
+        dominance_fronts = [[] for _ in range(pop_size)]
+        dominated_solutions = [set() for _ in range(pop_size)]
+        domination_counts = [0 for _ in range(pop_size)]
+        # Feasible solutions filtering
+        feasible_indices = [i for i, c in enumerate(constraints) if sum(c) == 0]
+        infeasible_indices = [i for i, c in enumerate(constraints) if sum(c) > 0]
+
+        # Non-dominated sorting among feasible solutions
+        for i in feasible_indices:
+            for j in feasible_indices:
+                if i != j:
+                    dominate_i = all(x <= y for x, y in zip(population_fx[i], population_fx[j]))
+                    dominate_j = all(y <= x for x, y in zip(population_fx[i], population_fx[j]))
+                    if dominate_i and not dominate_j:
+                        dominated_solutions[i].add(j)
+                    elif dominate_j and not dominate_i:
+                        domination_counts[i] += 1
+        
+            if domination_counts[i] == 0:
+                dominance_fronts[0].append(i)
+                self.ranks[i] = 0  # Rank feasible solutions without domination
+    
+        # Assign front numbers to feasible solutions and manage further fronts
+        front_number = 0
+        while dominance_fronts[front_number]:
+            for i in dominance_fronts[front_number]:
+                for j in dominated_solutions[i]:
+                    if j in feasible_indices:
+                        domination_counts[j] -= 1
+                        if domination_counts[j] == 0:
+                            dominance_fronts[front_number + 1].append(j)
+                            self.ranks[j] = front_number + 1
+            front_number += 1
+
+        # Sorting and ranking of infeasible solutions
+        # Ranking infeasible solutions
+        last_used_front_index = len(dominance_fronts) - 1
+
+        # Now, sort infeasible solutions based on their total constraint violations
+        infeasible_indices_sorted = sorted(infeasible_indices, key=lambda x: sum(constraints[x]))
+
+        # Place each infeasible solution in its own new front, starting after the last feasible front
+        for idx, inf_idx in enumerate(infeasible_indices_sorted):
+            next_front_index = last_used_front_index + idx + 1
+            if next_front_index >= len(dominance_fronts):
+                dominance_fronts.append([])
+            dominance_fronts[next_front_index].append(inf_idx)
+            self.ranks[inf_idx] = next_front_index
+
+        # Calculate crowding distance within each feasible front
+        for front in dominance_fronts:
+            if len(front) > 0 and front[0] in feasible_indices:  # Check if front contains feasible solutions
+                for obj_index in range(len(population_fx[0])):  # Assume each fitness is an array of objectives
+                    front.sort(key=lambda x: population_fx[x][obj_index])
+                    self.crowding_distances[front[0]] = self.crowding_distances[front[-1]] = float('inf')
+                    objective_min = population_fx[front[0]][obj_index]
+                    objective_max = population_fx[front[-1]][obj_index]
+
+                    for k in range(1, len(front) - 1):
+                        if objective_max > objective_min:
+                            self.crowding_distances[front[k]] += (population_fx[front[k + 1]][obj_index] - population_fx[front[k - 1]][obj_index]) / (objective_max - objective_min)
+
+        return population_fx
+        #-----------END-----------#
+    
+    def tournament_selection(self, population_x):
+        #-----------BEGIN-----------#
+        # TODO: Implement tournament selection on parent population to  
+        # construct a mating pool of size `pop_size` for crossover
+        mating_pool = []
+
+        for _ in range(self.pop_size):
+            # Randomly select two individuals for the tournament (they can be the same)
+            a, b = random.randint(0, self.pop_size - 1), random.randint(0, self.pop_size - 1)
+            # Use the self.ranks and self.crowding_distances arrays
+            rank_a, rank_b = self.ranks[a], self.ranks[b]
+            crowd_dist_a, crowd_dist_b = self.crowding_distances[a], self.crowding_distances[b]
+    
+            # Determine the winner of the tournament
+            if rank_a < rank_b or (rank_a == rank_b and crowd_dist_a > crowd_dist_b):
+                winner = population_x[a]
+            else:
+                winner = population_x[b]
+
+            # print("Winner shape:", np.shape(winner))
+            mating_pool.append(winner)
+    
+        return mating_pool
+        #-----------END-----------#
+        
+    def crossover(self, pc):
+        #-----------BEGIN-----------#
+        # TODO: Implement simulated binary crossover (SBX) to generate 
+        #       offspring of size `pop_size`
+        offspring_pool = []
+        np.random.shuffle(self.mating_pool)  # Shuffle the mating pool to randomize parent selection
+
+        for i in range(0, self.pop_size, 2):  # Step by 2 since we're taking pairs
+            # Select parents for crossover
+            parent1 = self.mating_pool[i]
+            parent2 = self.mating_pool[i+1] if i+1 < self.pop_size else self.mating_pool[0]
+            # print("Parent1 shape:", np.shape(parent1))
+            # print("Parent2 shape:", np.shape(parent2))
+            
+            # Initialize children as exact copies of parents
+            child1, child2 = parent1.copy(), parent2.copy()
+            # print("Child1 initial shape:", np.shape(child1))
+            # print("Child2 initial shape:", np.shape(child2))
+
+            # Perform crossover with probability pc
+            if random.random() <= pc:
+                # Assuming individual's decision variables are real-coded and stored as a list
+                for j in range(len(parent1)):
+                    # Crossover operation (SBX-like)
+                    u = random.random()
+                    beta = (2 * u) if u <= 0.5 else (1 / (2 * (1 - u)))
+                    beta = beta ** (1 / (self.crossover_distribution_index + 1))
+                    child1[j] = 0.5 * ((1 + beta) * parent1[j] + (1 - beta) * parent2[j])
+                    child2[j] = 0.5 * ((1 - beta) * parent1[j] + (1 + beta) * parent2[j])
+            # print("Child1 shape:", np.shape(child1))
+            # print("Child2 shape:", np.shape(child2))
+            
+            # Add children to the offspring pool
+            offspring_pool.extend([child1, child2])
+
+        # Clamp values to ensure they are within the specified bounds after crossover
+        for child in offspring_pool:
+            np.clip(child, self.lower_bound, self.upper_bound, out=child)
+        return offspring_pool
+        #-----------END-----------#
+        
+    def mutation(self, pm):
+        #-----------BEGIN-----------#
+        # TODO: Implement polynomial mutation (PM)
+        for individual in self.offspring_pool:
+            if random.random() < pm:
+                for i in range(len(individual)):
+                    u = random.random()
+                    if u < 0.5:
+                        delta = (2 * u) ** (1 / (self.mutation_distribution_index + 1)) - 1
+                    else:
+                        delta = 1 - (2 * (1 - u)) ** (1 / (self.mutation_distribution_index + 1))
+
+                    # Mutation step adjusted by the variable bounds
+                    individual[i] += delta * (self.upper_bound[i] - self.lower_bound[i])
+                    
+                    # Clamping to bounds
+                    individual[i] = max(self.lower_bound[i], min(self.upper_bound[i], individual[i]))
+
+        # Clamp values to ensure they are within the specified bounds after mutation
+        for individual in self.offspring_pool:
+            np.clip(individual, self.lower_bound, self.upper_bound, out=individual)
+        return self.offspring_pool
+        #-----------END-----------#
+        
+        
+    def environmental_selection(self, combined_population_list):
+        #-----------BEGIN-----------#
+        # TODO: Implement non-dominated sorting and crowding distance on
+        # the combined population of parent population and offspring population
+        # to select `pop_size` solutions for next population from combined population
+        # of 2 * `pop_size` solutions
+        # Unpack the combined population list
+        population_x, offspring_x = combined_population_list
+        
+        # Combine the parent and offspring populations
+        # Convert lists to numpy arrays if necessary
+        if isinstance(population_x, list):
+            population_x = np.array(population_x)
+        if isinstance(offspring_x, list):
+            offspring_x = np.array(offspring_x)
+        # print("Population X Shape:", population_x.shape)
+        # print("Offspring X Shape:", offspring_x.shape)
+        combined_population = np.vstack([population_x, offspring_x])  # Use vstack instead of +
+
+        # Assume fitness is already evaluated for combined_population
+        combined_fitness,combined_constraints = prob.evaluate(combined_population)
+        
+        # Initialize structures for non-dominated sorting
+        fronts = [[]]
+        domination_counts = [0] * len(combined_population)
+        dominated_individuals = [set() for _ in range(len(combined_population))]
+        
+        # Reset ranks and crowding distances for the new combined population
+        self.ranks = [-1] * len(combined_population)
+        self.crowding_distances = [0.0] * len(combined_population)
+        
+        # Filter feasible and infeasible solutions
+        feasible_indices = [i for i, c in enumerate(combined_constraints) if sum(c) == 0]
+        infeasible_indices = [i for i, c in enumerate(combined_constraints) if sum(c) > 0]
+
+        # Non-dominated sorting among feasible solutions
+        for i in feasible_indices:
+            for j in feasible_indices:
+                if i != j:
+                    dominate_i = all(x <= y for x, y in zip(combined_fitness[i], combined_fitness[j]))
+                    dominate_j = all(y <= x for x, y in zip(combined_fitness[i], combined_fitness[j]))
+                    if dominate_i and not dominate_j:
+                        dominated_individuals[i].add(j)
+                    elif dominate_j and not dominate_i:
+                        domination_counts[i] += 1
+
+            if domination_counts[i] == 0:
+                fronts[0].append(i)
+                self.ranks[i] = 0  # Assign rank 0 to non-dominated individuals
+
+        # Assign front numbers to feasible solutions and manage further fronts
+        front_number = 0
+        while front_number < len(fronts):
+            current_front = fronts[front_number]
+            next_front = []
+            for i in current_front:
+                for j in dominated_individuals[i]:
+                    if j in feasible_indices:
+                        domination_counts[j] -= 1
+                        if domination_counts[j] == 0:
+                            next_front.append(j)
+                            self.ranks[j] = front_number + 1
+            if next_front:
+                fronts.append(next_front)
+            front_number += 1
+
+        # Ranking infeasible solutions
+        last_used_front_index = len(fronts) - 1
+
+        # Now, sort infeasible solutions based on their total constraint violations
+        infeasible_indices_sorted = sorted(infeasible_indices, key=lambda x: sum(combined_constraints[x]))
+
+        # Place each infeasible solution in its own new front, starting after the last feasible front
+        for idx, inf_idx in enumerate(infeasible_indices_sorted):
+            next_front_index = last_used_front_index + idx + 1
+            if next_front_index >= len(fronts):
+                fronts.append([])
+            fronts[next_front_index].append(inf_idx)
+            self.ranks[inf_idx] = next_front_index
+
+        # Calculate crowding distances within each feasible front
+        for front in fronts:
+            if front:  # Only calculate for non-empty fronts
+                for i in range(len(combined_fitness[0])):  # Iterate over each objective
+                    front.sort(key=lambda x: combined_fitness[x][i])
+                    self.crowding_distances[front[0]] = self.crowding_distances[front[-1]] = float('inf')
+                    # Ensure denominator is not zero to avoid division by zero
+                    denominator = combined_fitness[front[-1]][i] - combined_fitness[front[0]][i]
+                    if denominator != 0:
+                        for k in range(1, len(front) - 1):
+                            numerator = combined_fitness[front[k + 1]][i] - combined_fitness[front[k - 1]][i]
+                            self.crowding_distances[front[k]] += numerator / denominator
+                    else:
+                        # If the values for all solutions in the front are identical for this objective,
+                        # their crowding distance for this objective might be set to a default non-infinite value.
+                        for k in range(1, len(front) - 1):
+                            self.crowding_distances[front[k]] += 0  # Could be another value, depending on the context
+
+        # Select the new population based on non-domination rank and crowding distance
+        new_population_indices = []
+        for front in fronts:
+            if len(new_population_indices) + len(front) > self.pop_size:
+                front.sort(key=lambda x: self.crowding_distances[x], reverse=True)
+                new_population_indices.extend(front[:self.pop_size - len(new_population_indices)])
+                break
+            new_population_indices.extend(front)
+
+        # Extract the new population and their fitness values
+        selected_population_x = [combined_population[i] for i in new_population_indices]
+        selected_population_fx = [combined_fitness[i] for i in new_population_indices]
+
+        # Return the new population and their fitness
+        return [selected_population_x, selected_population_fx]
+    
+        
+    def run(self, prob, max_gen):
+        # Initialization
+        population_x = self.initialize(prob)
+        population_fx,constraint = prob.evaluate(population_x)
+        constraints = np.sum(constraint, axis=1, keepdims=True)
+        # Evolve until termination condition is met
+        for i in range(1, max_gen):
+            #-----------BEGIN-----------#
+            # TODO:
+            # fitness assignment of parent population
+            self.fitness_assignment(population_fx,constraints)
+            
+            # ?? = self.tournament_selection(?)
+            self.mating_pool = self.tournament_selection(population_x)
+    
+            # ??? = self.crossover(??)
+            self.offspring_pool = self.crossover(self.crossover_probability)
+            
+            # offspring_x = self.mutation(???)
+            self.offspring_pool = self.mutation(self.mutation_probability)
+            
+            # Convert offspring_pool to a NumPy array before evaluation if not already
+            offspring_x = np.array(self.offspring_pool)
+            
+            # offspring_fx = prob.evaluate(offspring_x)  
+            offspring_fx = prob.evaluate(offspring_x)
+
+            # Apply enviromental selection to select solutions
+            [population_x, population_fx]  = self.environmental_selection([population_x, offspring_x])
+
+            # Print population after each iteration
+            # print("x = ", population_x)
+            
+            # Print progress after each iteration
+            print(f"Iteration {i}/{max_gen}") 
+
+        return population_x, population_fx
+
+
+
+import numpy as np
+import random
+optimizer = CNSGA2(pop_size=100, n_var=9, crossover_probability=0.9, mutation_probability=0.1,
+                  crossover_distribution_index=20, mutation_distribution_index=20,
+                  tournament_size=2)
+problem = RCM22()
+
+# Use NSGA-II to solve the ZDT3 problem
+[optimum_x, optimum_fx] = optimizer.run(problem, max_gen=500)
+
+#-----------BEGIN-----------#
+# TODO: Plot the final population `optimum_fx` in the objective space
+import matplotlib.pyplot as plt
+
+print("Final fitness values (optimum_fx):", optimum_fx)
+
+optimum_fx_array = np.array(optimum_fx)
+
+f1 = optimum_fx_array[:, 0]
+f2 = optimum_fx_array[:, 1]
+
+# Print the ranges of f1 and f2 to see if they fall within a sensible range
+print("Range of f1:", f1.min(), "to", f1.max())
+print("Range of f2:", f2.min(), "to", f2.max())
+
+plt.scatter(f1, f2, c='grey', marker='o')
+plt.xlabel('f1')
+plt.ylabel('f2')
+plt.title('NSGA-II Optimization Results for ZDT3')
+plt.show()
