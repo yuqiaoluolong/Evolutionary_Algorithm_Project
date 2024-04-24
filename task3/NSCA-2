@@ -285,12 +285,21 @@ class CNSGA2():
 
         # Calculate crowding distances within each feasible front
         for front in fronts:
-            if front and front[0] in feasible_indices:  # Only calculate for feasible fronts
-                for i in range(len(combined_fitness[0])):
+            if front:  # Only calculate for non-empty fronts
+                for i in range(len(combined_fitness[0])):  # Iterate over each objective
                     front.sort(key=lambda x: combined_fitness[x][i])
                     self.crowding_distances[front[0]] = self.crowding_distances[front[-1]] = float('inf')
-                    for k in range(1, len(front) - 1):
-                        self.crowding_distances[front[k]] += (combined_fitness[front[k + 1]][i] - combined_fitness[front[k - 1]][i]) / (combined_fitness[front[-1]][i] - combined_fitness[front[0]][i])
+                    # Ensure denominator is not zero to avoid division by zero
+                    denominator = combined_fitness[front[-1]][i] - combined_fitness[front[0]][i]
+                    if denominator != 0:
+                        for k in range(1, len(front) - 1):
+                            numerator = combined_fitness[front[k + 1]][i] - combined_fitness[front[k - 1]][i]
+                            self.crowding_distances[front[k]] += numerator / denominator
+                    else:
+                        # If the values for all solutions in the front are identical for this objective,
+                        # their crowding distance for this objective might be set to a default non-infinite value.
+                        for k in range(1, len(front) - 1):
+                            self.crowding_distances[front[k]] += 0  # Could be another value, depending on the context
 
         # Select the new population based on non-domination rank and crowding distance
         new_population_indices = []
