@@ -1,0 +1,73 @@
+# Implement the problem class for RCM22
+class RCM22():
+
+    def __init__(self):
+        self.name = 'RCM22'
+        self.n_obj = 2  # number of objectives
+        self.n_var = 9  # number of decision variables (x1 to x8)
+        self.n_con = 6  # number of constraints (4 h constraints and 2 g constraints)
+
+        self.lower = np.array(self.n_var)
+        self.upper = np.array([100, 200, 100, 100, 100, 100, 200, 100, 200])
+
+    def evaluate(self, x):
+        pop_size = len(x)
+        f = np.zeros((pop_size, self.n_obj))
+        h = np.zeros((pop_size, self.n_con-2))  # h constraints
+        g = np.zeros((pop_size, self.n_con-4))  # g constraints
+
+        # Objective functions
+        f[:, 0] = -9 * x[:, 0] - 15 * x[:, 1] + 6 * x[:, 2] + 16 * x[:, 3]
+        f[:, 1] = 10 * (x[:, 4] + x[:, 5])
+
+        # Constraints
+        h[:, 0] = x[:, 6] + x[:, 7] - x[:, 3] - x[:, 2]
+        h[:, 1] = x[:, 0] - x[:, 4] - x[:, 6]
+        h[:, 2] = x[:, 1] - x[:, 5] - x[:, 7]
+        h[:, 3] = x[:, 8] * x[:, 6] + x[:, 8] * x[:, 7] - 3 * x[:, 2] - x[:, 3]
+        h = np.abs(h)  # the degree of constraint violation of x at each equality constraint
+
+        g[:, 0] = x[:, 8] * x[:, 6] + 2 * x[:, 4] - 2.5 * x[:, 0]
+        g[:, 1] = x[:, 8] * x[:, 7] + 2 * x[:, 5] - 1.5 * x[:, 1]
+        g = np.where(g > 0, g, 0)  # the degree of constraint violation of x at each inequality constraint
+
+        # Combine h and g into one constraints array with non-negative violations
+        c = np.concatenate((h, g), axis=1)
+
+        return f, c
+
+
+
+# Test with instances
+# Create an instance of RCM22
+prob = RCM22()
+print(f"Problem = {prob.name}")
+print(f"Number of objectives = {prob.n_obj}")
+print(f"Number of variables = {prob.n_var}")
+print(f"Number of constraints = {prob.n_con}")
+print(f"Lower bounds = {prob.lower}")
+print(f"Upper bounds = {prob.upper}")
+
+
+
+# Evaluate a single solution
+pop_size = 1
+x = prob.lower + (prob.upper - prob.lower) * np.random.rand(pop_size, prob.n_var)
+f, c = prob.evaluate(x)
+print("x = ", x)
+print(f"f(x) = {f}")
+print(f"c(x) = {c}")
+print(f"CV(x) = {np.sum(c, axis=1, keepdims=True)}")  # Constraint Violation
+
+
+
+# Evaluate multiple solutions
+pop_size = 2
+x = prob.lower + (prob.upper - prob.lower) * np.random.rand(pop_size, prob.n_var)
+f, c = prob.evaluate(x)
+print("x = ", x)
+print(f"f(x) = {f}")
+print(f"c(x) = {c}")
+print(f"CV(x) = {np.sum(c, axis=1, keepdims=True)}")
+
+        
